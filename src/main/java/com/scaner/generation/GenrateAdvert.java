@@ -36,7 +36,7 @@ public class GenrateAdvert {
                 }
             }
 
-            if(i==5){
+            if(i==6){
                 break;
             }
             i++;
