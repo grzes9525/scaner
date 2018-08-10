@@ -193,13 +193,14 @@ public class GenrateAdvert {
         Matcher matcher = patternPrice.matcher(elementPrice1.text());
         if (matcher.find())
         {
-            advert.setPrice(Double.parseDouble(matcher.group(0).replaceAll("\\s+","")));
+            advert.setPrice(Double.parseDouble(matcher.group(0).replaceAll("\\s+","").replaceAll(",",".")));
         }
         Pattern patternCurrency = Pattern.compile("((?:[a-z]ł[a-z0-9_]*))");
         Matcher matcher1= patternCurrency.matcher(elementPrice1.text());
         if(matcher1.find()){
             advert.setCurrency(matcher1.group(1).replaceAll("\\s+",""));
         }
+
 
         /**
          * okres płatności np. miesiecznie
