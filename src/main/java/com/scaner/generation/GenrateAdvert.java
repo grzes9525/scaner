@@ -138,22 +138,27 @@ public class GenrateAdvert {
          */
         Elements elementsAddress2 = source.getElementsByAttributeValueContaining("itemprop","address");
         Element elementAddress2 = elementsAddress2.first();
-        String address = elementAddress2.text().replaceAll("\\s+","");
+        String address = elementAddress2.text().replaceAll(", ",",");
         String[] addresses = address.split(",");
         System.out.println(advert.getLinkToAd());
         advert.setCity(addresses[0]);
-        advert.setDistrict(addresses[1]);
-        if(StringUtils.countOccurrencesOf(address,",")==1){
-            advert.setStreet(addresses[1]);
-        }else{
-            advert.setStreet(addresses[2]);
+        if(StringUtils.countOccurrencesOf(address,",")!=0){
+            advert.setDistrict(addresses[1]);
+            if(StringUtils.countOccurrencesOf(address,",")==1){
+                advert.setStreet(addresses[1]);
+            }else{
+                advert.setStreet(addresses[2]);
+            }
         }
+
 
         /**
          * tworznie pełnego adresu
          */
         if(advert.getStreet()==null){
             advert.setAddress(advert.getCity()+", "+advert.getDistrict());
+        }else if(StringUtils.countOccurrencesOf(address,",")==0){
+            advert.setAddress(advert.getCity());
         }else{
             advert.setAddress(advert.getCity()+", "+advert.getDistrict()+", "+advert.getStreet());
         }
