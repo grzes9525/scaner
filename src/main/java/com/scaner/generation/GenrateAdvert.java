@@ -201,7 +201,6 @@ public class GenrateAdvert {
             advert.setCurrency(matcher1.group(1).replaceAll("\\s+",""));
         }
 
-
         /**
          * okres płatności np. miesiecznie
          */
