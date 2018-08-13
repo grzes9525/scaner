@@ -1,23 +1,34 @@
 package com.scaner.generation;
 
 import com.scaner.model.Advert;
+import com.scaner.repository.AdvertRepository;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Component
 public class GenrateAdvert {
 
-    public static List<Advert> generateAdverts(){
+    @Autowired
+    private AdvertRepository advertRepository;
+
+    public List<Advert> generateAdverts(){
         List<Advert> adverts = new ArrayList<>();
         fillAdvertsList(adverts);
         try {
@@ -27,7 +38,7 @@ public class GenrateAdvert {
         }
         int i=0;
         for(Advert advert:adverts){
-            if(advert.getLinkToAd()!=null && !advert.getLinkToAd().isEmpty()){
+            if(!advertRepository.existsById(advert.getDataItemId()) && advert.getLinkToAd()!=null && !advert.getLinkToAd().isEmpty()){
                 getDetailAdvert(advert);
                 try {
                     Thread.sleep(60000);
@@ -35,7 +46,6 @@ public class GenrateAdvert {
                     e.printStackTrace();
                 }
             }
-
             if(i==5){
                 break;
             }
@@ -62,12 +72,7 @@ public class GenrateAdvert {
         }
         in.close();
 
-        //zapisuje do pliku
-        String fileName = "testFile.txt";
-
-        FileWriter fileWriter = new FileWriter(fileName);
-        BufferedWriter writer = new BufferedWriter(fileWriter);
-        return websiteSource.toString();
+        return new String(websiteSource.toString().getBytes(),"UTF-8");
     }
 
     /**
@@ -149,15 +154,16 @@ public class GenrateAdvert {
             }else{
                 advert.setStreet(addresses[2]);
             }
+        }else{
+            advert.setDistrict("Inaccurate_data");
+            advert.setStreet("Inaccurate_data");
         }
 
 
         /**
          * tworznie pełnego adresu
          */
-        if(advert.getStreet()==null){
-            advert.setAddress(advert.getCity()+", "+advert.getDistrict());
-        }else if(StringUtils.countOccurrencesOf(address,",")==0){
+        if(advert.getStreet()=="Inaccurate_data" && advert.getDistrict()=="Inaccurate_data" ){
             advert.setAddress(advert.getCity());
         }else{
             advert.setAddress(advert.getCity()+", "+advert.getDistrict()+", "+advert.getStreet());
@@ -215,6 +221,12 @@ public class GenrateAdvert {
         if(elementPeriodOfPayment.text().equals("/miesiąc")){
             advert.setPeriodOfPeyment("monthly");
         }
+
+        /**
+         * Data wygenerowania
+         */
+
+        advert.setGenerateAdvertDt(new Date());
 
     }
 

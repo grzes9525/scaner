@@ -27,7 +27,8 @@ public class ScanerApplicationTests {
 	public void contextLoads() {
 		int i=1;
 
-		for(Advert advert:GenrateAdvert.generateAdverts()){
+		GenrateAdvert genrateAdvert = new GenrateAdvert();
+		for(Advert advert:genrateAdvert.generateAdverts()){
 			System.out.println(i+" "+advert.toString());
 			System.out.println("---------------------------------------------------------------------------------------");
 			i++;

@@ -3,6 +3,7 @@ package com.scaner.model;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import java.io.Serializable;
+import java.util.Date;
 
 @Entity
 public class Advert implements Serializable{
@@ -17,6 +18,7 @@ public class Advert implements Serializable{
     private String city;
     private String district;
     private String street;
+    private Date generateAdvertDt;
     private Integer propertyNumber;
     private String details;
     private String dataTrackingId;
@@ -55,6 +57,17 @@ public class Advert implements Serializable{
     private String linkVirtualWalking;
     private String linkDevelopmentPlan;
     private String link3dView;
+
+    public Advert() {
+    }
+
+    public Date getGenerateAdvertDt() {
+        return generateAdvertDt;
+    }
+
+    public void setGenerateAdvertDt(Date generateAdvertDt) {
+        this.generateAdvertDt = generateAdvertDt;
+    }
 
     public String getPeriodOfPeyment() {
         return periodOfPeyment;
