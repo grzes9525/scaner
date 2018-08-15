@@ -1,21 +1,20 @@
 package com.scaner.generation;
 
 import com.scaner.model.Advert;
+import com.scaner.model.Page;
 import com.scaner.repository.AdvertRepository;
+import com.scaner.repository.PageRepository;
 import org.jsoup.Jsoup;
-import org.jsoup.helper.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +26,9 @@ public class GenrateAdvert {
 
     @Autowired
     private AdvertRepository advertRepository;
+
+    @Autowired
+    private PageRepository pageRepository;
 
     public List<Advert> generateAdverts(){
         List<Advert> adverts = new ArrayList<>();
@@ -46,7 +48,7 @@ public class GenrateAdvert {
                     e.printStackTrace();
                 }
             }
-            if(i==5){
+            if(i==0){
                 break;
             }
             i++;
@@ -74,21 +76,49 @@ public class GenrateAdvert {
 
         return new String(websiteSource.toString().getBytes(),"UTF-8");
     }
+    /**
+     * numer strony
+     */
+    @Transactional
+    void saveNextPageNumber(Document source){
+
+        Elements elementsPageNumber = source.getElementsByAttributeValueContaining("class","pager-next");
+
+        System.out.println(elementsPageNumber.toString());
+        Page page = new Page();
+        String linkToNextPage = elementsPageNumber.first().getElementsByTag("a").attr("href");
+        System.out.println("sss: "+ linkToNextPage);
+        page.setPageNumber(Integer.valueOf(linkToNextPage.substring(linkToNextPage.indexOf("page=")+5,linkToNextPage.length())));
+        page.setId(1l);
+        System.out.println(page.getId()+" "+page.getPageNumber());
+        pageRepository.save(page);
+        System.out.println("Numer strony: "+page.getPageNumber());
+    }
 
     /**
      *
      * @return link do strony
      */
-    public static String generateLink(){
-        return "https://www.otodom.pl/wynajem/mieszkanie/?search%5Bdescription%5D=1#form";//"https://www.otodom.pl/sprzedaz/?description=1&nrAdsPerPage=72&page="+numberPage (pobierz ostatnio przeglądaną strone jeśli jest nulem to wstaw 1);
-
+    public String generateLink(){
+        Page page = new Page();
+        page.setPageNumber(1);
+        Integer pageNumber = pageRepository.findById(1l).orElse(page).getPageNumber();
+        if(pageNumber==null){
+            pageNumber=1;
+        }
+        return "https://www.otodom.pl/wynajem/mieszkanie/?search%5BCSRF" +
+                "Token%5D=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37&CSRF" +
+                "Token=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37&page=" +
+                +pageNumber+
+                "&search%5BCSRFToken%5D=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37&search%5B" +
+                "description%5D=1&CSRFToken=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37#form";
     }
 
     /**
      *
      * @return zawartość źródłową strony
      */
-    public static List<Advert> fillAdvertsList(List<Advert> adverts){
+    public List<Advert> fillAdvertsList(List<Advert> adverts){
 
         Document source = null;
         try {
@@ -114,6 +144,7 @@ public class GenrateAdvert {
             adverts.add(advert);
         }
 
+        saveNextPageNumber(source);
 
         return adverts;
     }
@@ -122,7 +153,7 @@ public class GenrateAdvert {
      * metoda tworzy ogłoszenia na podstawie szczegłowego ogłoszenia
      * @param advert obiekt do zwrócenia
      */
-    public static void getDetailAdvert(Advert advert){
+    public void getDetailAdvert(Advert advert){
         Document source = null;
         try {
             source = Jsoup.parse(GenrateAdvert.getWebSiteSourceContent(advert.getLinkToAd()));
@@ -227,6 +258,7 @@ public class GenrateAdvert {
          */
 
         advert.setGenerateAdvertDt(new Date());
+
 
     }
 

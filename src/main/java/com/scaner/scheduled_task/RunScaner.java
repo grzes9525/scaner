@@ -1,4 +1,4 @@
-package com.scaner.ScheduledTask;
+package com.scaner.scheduled_task;
 
 import com.scaner.generation.GenrateAdvert;
 import com.scaner.model.Advert;
@@ -24,7 +24,7 @@ public class RunScaner {
     @Autowired
     private GenrateAdvert genrateAdvert;
 
-    @Scheduled(fixedRate = 6*60*1000)
+    @Scheduled(fixedRate = 2*60*1000)
     public void reportCurrentTime() {
         log.getLogger("run SCANER");
 
