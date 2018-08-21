@@ -15,6 +15,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class GenrateAdvert {
+
 
     @Autowired
     private AdvertRepository advertRepository;
@@ -40,6 +42,8 @@ public class GenrateAdvert {
         }
         int i=0;
         for(Advert advert:adverts){
+            System.out.println("Exist: " +advertRepository.existsById(advert.getDataItemId()));
+            System.out.println(advert.getLinkToAd());
             if(!advertRepository.existsById(advert.getDataItemId()) && advert.getLinkToAd()!=null && !advert.getLinkToAd().isEmpty()){
                 getDetailAdvert(advert);
                 try {
@@ -48,7 +52,7 @@ public class GenrateAdvert {
                     e.printStackTrace();
                 }
             }
-            if(i==0){
+            if(i==3){
                 break;
             }
             i++;
@@ -65,16 +69,17 @@ public class GenrateAdvert {
      */
     public static String getWebSiteSourceContent(String link) throws IOException {
         URL example = new URL(link);
-        BufferedReader in = new BufferedReader(new InputStreamReader(example.openStream()));
 
         StringBuilder websiteSource = new StringBuilder();
         String tmp = null;
-        while ((tmp = in.readLine()) != null) {
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(example.openStream(), "UTF8"));
+        while ((tmp = reader.readLine()) != null) {
+            
             websiteSource.append(tmp);
         }
-        in.close();
-
-        return new String(websiteSource.toString().getBytes(),"UTF-8");
+        reader.close();
+        return websiteSource.toString();
     }
     /**
      * numer strony
@@ -176,7 +181,7 @@ public class GenrateAdvert {
         Element elementAddress2 = elementsAddress2.first();
         String address = elementAddress2.text().replaceAll(", ",",");
         String[] addresses = address.split(",");
-        System.out.println(advert.getLinkToAd());
+        System.out.println("link: "+advert.getLinkToAd());
         advert.setCity(addresses[0]);
         if(StringUtils.countOccurrencesOf(address,",")!=0){
             advert.setDistrict(addresses[1]);
@@ -229,18 +234,19 @@ public class GenrateAdvert {
         /**
          * cena
          */
-        Elements elementsPirce = source.getElementsByAttributeValueContaining("class","box-price-value no-estimates");
+        Elements elementsPirce = source.getElementsByAttributeValueContaining("class","box-price-value");
         Element elementPrice1 = elementsPirce.first();
         Pattern patternPrice = Pattern.compile("(.*[0-9] *[0-9])");
+
         Matcher matcher = patternPrice.matcher(elementPrice1.text());
         if (matcher.find())
         {
             advert.setPrice(Double.parseDouble(matcher.group(0).replaceAll("\\s+","").replaceAll(",",".")));
         }
-        Pattern patternCurrency = Pattern.compile("((?:[a-z]ł[a-z0-9_]*))");
-        Matcher matcher1= patternCurrency.matcher(elementPrice1.text());
-        if(matcher1.find()){
-            advert.setCurrency(matcher1.group(1).replaceAll("\\s+",""));
+        if(elementPrice1.text().contains("zł")){
+            advert.setCurrency("zł");
+        }else if(elementPrice1.text().contains("EUR")){
+            advert.setCurrency("EUR");
         }
 
         /**
@@ -248,7 +254,7 @@ public class GenrateAdvert {
          */
         Elements elementsPeriodOfPayment = source.getElementsByAttributeValueContaining("class","box-price-text");
         Element elementPeriodOfPayment = elementsPeriodOfPayment.first();
-        //System.out.println(elementPeriodOfPayment.text());
+        System.out.println(elementPeriodOfPayment.text());
         if(elementPeriodOfPayment.text().equals("/miesiąc")){
             advert.setPeriodOfPeyment("monthly");
         }
@@ -256,8 +262,71 @@ public class GenrateAdvert {
         /**
          * Data wygenerowania
          */
-
         advert.setGenerateAdvertDt(new Date());
+
+        /**
+         * area
+         */
+        Elements elementsArea = source.getElementsByAttributeValueContaining("class","param_m");
+        Element elementArea = elementsArea.first();
+        System.out.println(elementArea.text());
+        Pattern patternArea = Pattern.compile("([0-9,]+)");
+        Matcher matcherArea= patternArea.matcher(elementArea.text());
+        if(matcherArea.find()){
+            System.out.println("gruper: "+matcherArea.group(0));
+
+            advert.setLivingArea(Double.parseDouble(matcherArea.group(0).replaceAll("\\s+","").replaceAll(",",".")));
+            advert.setUnityArea(elementArea.text().substring(elementArea.text().length()-3,elementArea.text().length()));
+
+        }
+        /**
+         * rooms
+         */
+        Elements elementsRooms = source.getElementsByAttributeValueContaining("class","section-offer-params");
+        Element elementRooms = elementsRooms.first();
+        System.out.println(elementRooms.text());
+        String content = elementRooms.text();
+        if(content.contains("Liczba pokoi ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Piętro ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Kaucja: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Rodzaj zabudowy: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Ogrzewanie: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Stan wykończenia: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Dostępne od: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Wynajmę również studentom: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Wyposażenie ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Rok budowy: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Materiał budynku: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Materiał budynku: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+        if(content.contains("Materiał budynku: ")){
+            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        }
+
+
 
 
     }
