@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"></meta>
+    <title>List of all cities</title>
+</head>
+<body>
+<h1>All cities:</h1>
+<table border="1">
+    <tr>
+        <th>Miasto</th>
+
+    </tr>
+    <tr th:each="advert: ${advertList}">
+        <td th:text="${advert.city}"></td>
+    </tr>
+</table>
+<p><a href="http://51.38.132.164:8080/front/index.html">Mapy</a></p>
+
+</body>
+</html>

@@ -2,14 +2,14 @@ package com.scaner.model;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import java.io.Serializable;
 import java.util.Date;
 
 @Entity
-public class Advert implements Serializable{
+public class Advert implements Comparable<Advert>{
 
     @Id
     private String dataItemId;
+    private String affordableInd;
     private String linkToAdImage;
     /**
      * pełny adres
@@ -25,11 +25,13 @@ public class Advert implements Serializable{
     private String linkToAd;
     private String title;
     private Double price;
+    private Integer numberOfRooms;
     private String currency;
     private String offerItemTitle;
     private Double pricePerMetre;
     private Double priceForPeriodOfPayment;
     private String periodOfPeyment;
+
     /**
      * rodzaj transkacji np. na wynajem
      */
@@ -43,22 +45,206 @@ public class Advert implements Serializable{
      * opis nieruchomości ze strony głownej
      */
     private String descAdvert;
+    /**
+     * nasze piętro
+     */
+    private String accurateFloor;
+    /**
+     * wszystkie piętra
+     */
+    private Integer allFloor;
     private String unityArea;
+    private Double deposit;
     private String kindOfPlot;
     private Double Xside;
     private Double Yside;
     private String dealerType;
     private String fence;
+    private String depositeCurency;
     private String location;
-    private String utilities;
     private String approachRoad;
+    private String heating;
+    private String levelFinishingBuilding;
     private String neighbourhood;
     private String linkFilm;
     private String linkVirtualWalking;
     private String linkDevelopmentPlan;
     private String link3dView;
+    private String typeOfDevelopment;
+    private Date dateBuild;
+    private String conditionOfProperty;
+    private String typeOfWindow;
+    private String typeOfBuildingMaterial;
+    private Date dateOfAvailability;
+    private String alsoForStudent;
+    private String equipment;
+    private String utilities;
+    private String additionalInformation;
+    private String security;
+    private Double latitude;
+    private Double longitude;
 
     public Advert() {
+    }
+
+    public String getAffordableInd() {
+        return affordableInd;
+    }
+
+    public void setAffordableInd(String affordableInd) {
+        this.affordableInd = affordableInd;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getSecurity() {
+        return security;
+    }
+
+    public void setSecurity(String security) {
+        this.security = security;
+    }
+
+    public String getEquipment() {
+        return equipment;
+    }
+
+    public void setEquipment(String equipment) {
+        this.equipment = equipment;
+    }
+
+    public String getAdditionalInformation() {
+        return additionalInformation;
+    }
+
+    public void setAdditionalInformation(String additionalInformation) {
+        this.additionalInformation = additionalInformation;
+    }
+
+    public String getAlsoForStudent() {
+        return alsoForStudent;
+    }
+
+    public void setAlsoForStudent(String alsoForStudent) {
+        this.alsoForStudent = alsoForStudent;
+    }
+
+    public Date getDateOfAvailability() {
+        return dateOfAvailability;
+    }
+
+    public void setDateOfAvailability(Date dateOfAvailability) {
+        this.dateOfAvailability = dateOfAvailability;
+    }
+
+    public String getTypeOfWindow() {
+        return typeOfWindow;
+    }
+
+    public void setTypeOfWindow(String typeOfWindow) {
+        this.typeOfWindow = typeOfWindow;
+    }
+
+    public String getTypeOfBuildingMaterial() {
+        return typeOfBuildingMaterial;
+    }
+
+    public void setTypeOfBuildingMaterial(String typeOfBuildingMaterial) {
+        this.typeOfBuildingMaterial = typeOfBuildingMaterial;
+    }
+
+    public String getConditionOfProperty() {
+        return conditionOfProperty;
+    }
+
+    public void setConditionOfProperty(String conditionOfProperty) {
+        this.conditionOfProperty = conditionOfProperty;
+    }
+
+    public Date getDateBuild() {
+        return dateBuild;
+    }
+
+    public void setDateBuild(Date dateBuild) {
+        this.dateBuild = dateBuild;
+    }
+
+    public String getHeating() {
+        return heating;
+    }
+
+    public void setHeating(String heating) {
+        this.heating = heating;
+    }
+
+    public String getLevelFinishingBuilding() {
+        return levelFinishingBuilding;
+    }
+
+    public void setLevelFinishingBuilding(String levelFinishingBuilding) {
+        this.levelFinishingBuilding = levelFinishingBuilding;
+    }
+
+    public String getTypeOfDevelopment() {
+        return typeOfDevelopment;
+    }
+
+    public void setTypeOfDevelopment(String typeOfDevelopment) {
+        this.typeOfDevelopment = typeOfDevelopment;
+    }
+
+    public String getDepositeCurency() {
+        return depositeCurency;
+    }
+
+    public void setDepositeCurency(String depositeCurency) {
+        this.depositeCurency = depositeCurency;
+    }
+
+    public Double getDeposit() {
+        return deposit;
+    }
+
+    public void setDeposit(Double deposit) {
+        this.deposit = deposit;
+    }
+
+    public String getAccurateFloor() {
+        return accurateFloor;
+    }
+
+    public void setAccurateFloor(String accurateFloor) {
+        this.accurateFloor = accurateFloor;
+    }
+
+    public Integer getAllFloor() {
+        return allFloor;
+    }
+
+    public void setAllFloor(Integer allFloor) {
+        this.allFloor = allFloor;
+    }
+
+    public Integer getNumberOfRooms() {
+        return numberOfRooms;
+    }
+
+    public void setNumberOfRooms(Integer numberOfRooms) {
+        this.numberOfRooms = numberOfRooms;
     }
 
     public Date getGenerateAdvertDt() {
@@ -365,5 +551,10 @@ public class Advert implements Serializable{
                 ", kindOfTransaction='" + kindOfTransaction + '\'' +
                 ", descAdvert='" + descAdvert + '\'' +
                 '}';
+    }
+
+    @Override
+    public int compareTo(Advert o) {
+        return -1;
     }
 }

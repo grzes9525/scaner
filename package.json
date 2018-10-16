@@ -1,0 +1,27 @@
+{
+  "name": "front",
+  "version": "1.0.0",
+  "description": "map",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+  "start": "parcel index.html",
+  "build": "parcel build --public-url . index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://grzes9525@bitbucket.org/grzes9525/scaner1.1.git"
+  },
+  "keywords": [
+    "final"
+  ],
+  "author": "gre",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/grzes9525/scaner1.1#readme",
+  "dependencies": {
+    "ol": "^5.2.0"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.9.7"
+  }
+}

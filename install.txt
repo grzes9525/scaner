@@ -1,0 +1,7 @@
+export CATALINA_HOME="/usr/local/apache-tomcat-10.0.1"
+export JAVA_HOME="/root/jdk1.8.0_192"
+export JRE_HOME="/root/jdk1.8.0_192"
+
+update-alternatives --install "/usr/bin/java" "java" "/root/jdk1.8.0_192/bin/java" 1
+update-alternatives --install "/usr/bin/javac" "javac" "/root/jdk1.8.0_192/bin/javac" 1
+update-alternatives --install "/usr/bin/javaws" "javaws" "/root/jdk1.8.0_192/bin/javaws" 1

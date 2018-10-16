@@ -1,0 +1,11 @@
+SELECT CONCAT('ALTER TABLE `', TABLE_NAME,'` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;') AS mySQL FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA= "scaner" AND TABLE_TYPE="BASE TABLE"; 
+
+https://www.rosehosting.com/blog/how-to-install-tomcat-9-on-debian-9/ instalacja javy i debiana
+http://jdk.java.net/8/ tarbale
+https://tecadmin.net/install-mysql-server-on-debian9-stretch/ instalcja mysql
+https://stackoverflow.com/questions/3513773/change-mysql-default-character-set-to-utf-8-in-my-cnf kodowanie
+
+https://wiki.openstreetmap.org/wiki/DE:OpenLayers_Marker_Example
+
+https://tecadmin.net/install-latest-nodejs-npm-on-debian/ yarn
+https://tecadmin.net/install-yarn-debian/ node

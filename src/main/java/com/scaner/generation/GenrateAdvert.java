@@ -1,22 +1,30 @@
 package com.scaner.generation;
 
 import com.scaner.model.Advert;
+import com.scaner.model.Audit;
 import com.scaner.model.Page;
 import com.scaner.repository.AdvertRepository;
+import com.scaner.repository.AuditRepository;
 import com.scaner.repository.PageRepository;
+import com.scaner.service.PageServices;
+import com.scaner.statistics.StatisticGenerator;
+import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
-import java.nio.charset.Charset;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -25,6 +33,7 @@ import java.util.regex.Pattern;
 @Component
 public class GenrateAdvert {
 
+    final static Logger logger = Logger.getLogger(GenrateAdvert.class);
 
     @Autowired
     private AdvertRepository advertRepository;
@@ -32,37 +41,69 @@ public class GenrateAdvert {
     @Autowired
     private PageRepository pageRepository;
 
-    public List<Advert> generateAdverts(){
+    @Autowired
+    private AuditRepository auditRepository;
+
+    @Autowired
+    private StatisticGenerator statisticGenerator;
+
+    @Autowired
+    private PageServices pageServices;
+
+    public void generateAdverts() {
         List<Advert> adverts = new ArrayList<>();
         fillAdvertsList(adverts);
         try {
-            Thread.sleep(10000);
+            Thread.sleep(6*10000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        int i=0;
-        for(Advert advert:adverts){
-            System.out.println("Exist: " +advertRepository.existsById(advert.getDataItemId()));
-            System.out.println(advert.getLinkToAd());
-            if(!advertRepository.existsById(advert.getDataItemId()) && advert.getLinkToAd()!=null && !advert.getLinkToAd().isEmpty()){
+        //int i = 0;
+        for (Advert advert : adverts) {
+            System.out.println("Exist: " + advertRepository.existsById(advert.getDataItemId()));
+            //System.out.println(advert.getLinkToAd());
+            Audit audit = new Audit();
+            audit.setDatItemId(advert.getDataItemId());
+            audit.setLinkToAd(advert.getLinkToAd());
+
+            //Y to obkiet  istaniał
+            audit.setStatusExistingInd("Y");
+            auditRepository.save(audit);
+            if (!advertRepository.existsById(advert.getDataItemId()) && advert.getLinkToAd() != null && !advert.getLinkToAd().isEmpty()) {
+                 //N to obkiet nie istaniał
+                audit.setStatusExistingInd("N");
+                auditRepository.save(audit);
                 getDetailAdvert(advert);
+                logger.info("Wysłane ogłoszenie: "+advert.toString());
+                advertRepository.save(advert);
+                System.out.println("-------------SAVED----------------");
+                long start = new Date().getTime();
+                int i =0;
+                for(Advert advert1:advertRepository.findByCityAndLatitudeIsNotNull("Warszawa")){
+                    System.out.println("advertRepository.findByCityAndLatitudeIsNotNull(\"Warszawa\"): "+advertRepository.findByCityAndLatitudeIsNotNull("Warszawa").size());
+                    statisticGenerator.affordableAdvertInWarsaw(advert1);
+                    i++;
+                    //logger.info("Spraw ogłoszenie: "+advert1.toString());
+                }
+                System.out.println("Test pobierania findByCityAndLatitudeIsNotNull(\"Warszawa\"):"+ i);
+                long end = new Date().getTime();
+                System.out.println("Czas genrowania statystyki po dodaniu jednego ogłoszenia do bazy: "+(end-start)/(1000)+" s");
                 try {
-                    Thread.sleep(60000);
+                    Thread.sleep(5*60000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
-            if(i==3){
+            /*
+            if (i == 3) {
                 break;
             }
             i++;
+             */
         }
-
-        return adverts;
     }
 
     /**
-     *
      * @param link do strony
      * @return zawartość żródłową strony
      * @throws IOException jeśli nie znajdzie strony z linka
@@ -75,55 +116,31 @@ public class GenrateAdvert {
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(example.openStream(), "UTF8"));
         while ((tmp = reader.readLine()) != null) {
-            
+
             websiteSource.append(tmp);
         }
         reader.close();
+        //System.out.println(DecodePolishChar.decodeChar(websiteSource.toString()));
         return websiteSource.toString();
     }
-    /**
-     * numer strony
-     */
-    @Transactional
-    void saveNextPageNumber(Document source){
 
-        Elements elementsPageNumber = source.getElementsByAttributeValueContaining("class","pager-next");
 
-        System.out.println(elementsPageNumber.toString());
-        Page page = new Page();
-        String linkToNextPage = elementsPageNumber.first().getElementsByTag("a").attr("href");
-        System.out.println("sss: "+ linkToNextPage);
-        page.setPageNumber(Integer.valueOf(linkToNextPage.substring(linkToNextPage.indexOf("page=")+5,linkToNextPage.length())));
-        page.setId(1l);
-        System.out.println(page.getId()+" "+page.getPageNumber());
-        pageRepository.save(page);
-        System.out.println("Numer strony: "+page.getPageNumber());
-    }
 
     /**
-     *
      * @return link do strony
      */
-    public String generateLink(){
+    public String generateLink() {
         Page page = new Page();
         page.setPageNumber(1);
         Integer pageNumber = pageRepository.findById(1l).orElse(page).getPageNumber();
-        if(pageNumber==null){
-            pageNumber=1;
+        if (pageNumber == null) {
+            pageNumber = 1;
         }
-        return "https://www.otodom.pl/wynajem/mieszkanie/?search%5BCSRF" +
-                "Token%5D=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37&CSRF" +
-                "Token=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37&page=" +
-                +pageNumber+
-                "&search%5BCSRFToken%5D=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37&search%5B" +
-                "description%5D=1&CSRFToken=92c1086db99b36a692cedb34d46aaa22688d2c0e16058a0fd319ace3a96c6a37#form";
+        return "https://www.otodom.pl/wynajem/mieszkanie/warszawa/?search%5BCSRFToken%5D=964e7396d87518900eb9b492e953e7aad884a7a7cba924d819c84379b1f38848&CSRFToken=964e7396d87518900eb9b492e953e7aad884a7a7cba924d819c84379b1f38848&page="+pageNumber+"&search%5Bdescription%5D=1&search%5Bdist%5D=0&search%5Bsubregion_id%5D=197&search%5Bcity_id%5D=26";
     }
 
-    /**
-     *
-     * @return zawartość źródłową strony
-     */
-    public List<Advert> fillAdvertsList(List<Advert> adverts){
+
+    public List<Advert> fillAdvertsList(List<Advert> adverts) {
 
         Document source = null;
         try {
@@ -149,16 +166,79 @@ public class GenrateAdvert {
             adverts.add(advert);
         }
 
-        saveNextPageNumber(source);
+
+        pageServices.saveNextPageNumber(source);
 
         return adverts;
     }
 
+    private Double getPrice(String content) {
+        Pattern patternPrice = Pattern.compile("(.*[0-9] *[0-9])");
+        Matcher matcher = patternPrice.matcher(content);
+
+        if (matcher.find()) {
+            return Double.parseDouble(matcher.group(0).replaceAll("\\s+", "").replaceAll(",", "."));
+        } else {
+            return null;
+        }
+
+
+    }
+
+    private String getCurrency(String content) {
+        if (content.contains("zł")) {
+            return "zł";
+        } else if (content.contains("EUR")) {
+            return "EUR";
+        } else {
+            return null;
+        }
+    }
+
+    private Date getDate(String content) {
+        String sDate = null;
+        Pattern pattern = Pattern.compile("([0-9]*)");
+        Matcher matcher = pattern.matcher(content);
+        if (content.contains("Stycznia") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "01" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Lutego") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "02" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Marca") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "03" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Kwietnia") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "04" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Maja") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "05" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Czerwca") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "06" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Lipca") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "07" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Sierpnia") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "08" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Września") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "09" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Października") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "10" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Listopada") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "11" + "/" + content.substring(content.length() - 4, content.length());
+        } else if (content.contains("Grudnia") && matcher.find()) {
+            sDate = matcher.group(0) + "/" + "12" + "/" + content.substring(content.length() - 4, content.length());
+        }
+
+        try {
+            return new SimpleDateFormat("dd/MM/yyyy").parse(sDate);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     /**
      * metoda tworzy ogłoszenia na podstawie szczegłowego ogłoszenia
+     *
      * @param advert obiekt do zwrócenia
      */
-    public void getDetailAdvert(Advert advert){
+    public void getDetailAdvert(Advert advert) {
         Document source = null;
         try {
             source = Jsoup.parse(GenrateAdvert.getWebSiteSourceContent(advert.getLinkToAd()));
@@ -169,7 +249,7 @@ public class GenrateAdvert {
         /**
          * typ ogłoszenia
          */
-        Elements elementsAddress = source.getElementsByAttributeValueContaining("class","address-links");
+        Elements elementsAddress = source.getElementsByAttributeValueContaining("class", "address-links");
         Elements elementsAddress1 = elementsAddress.first().getAllElements();
         advert.setKindOfTransaction(elementsAddress1.get(1).text());
         //System.out.println(elementsAddress1.get(1).text());
@@ -177,20 +257,20 @@ public class GenrateAdvert {
         /**
          * adres
          */
-        Elements elementsAddress2 = source.getElementsByAttributeValueContaining("itemprop","address");
+        Elements elementsAddress2 = source.getElementsByAttributeValueContaining("itemprop", "address");
         Element elementAddress2 = elementsAddress2.first();
-        String address = elementAddress2.text().replaceAll(", ",",");
+        String address = elementAddress2.text().replaceAll(", ", ",");
         String[] addresses = address.split(",");
-        System.out.println("link: "+advert.getLinkToAd());
+        //System.out.println("link: " + advert.getLinkToAd());
         advert.setCity(addresses[0]);
-        if(StringUtils.countOccurrencesOf(address,",")!=0){
+        if (StringUtils.countOccurrencesOf(address, ",") != 0) {
             advert.setDistrict(addresses[1]);
-            if(StringUtils.countOccurrencesOf(address,",")==1){
+            if (StringUtils.countOccurrencesOf(address, ",") == 1) {
                 advert.setStreet(addresses[1]);
-            }else{
+            } else {
                 advert.setStreet(addresses[2]);
             }
-        }else{
+        } else {
             advert.setDistrict("Inaccurate_data");
             advert.setStreet("Inaccurate_data");
         }
@@ -199,63 +279,28 @@ public class GenrateAdvert {
         /**
          * tworznie pełnego adresu
          */
-        if(advert.getStreet()=="Inaccurate_data" && advert.getDistrict()=="Inaccurate_data" ){
+        if (advert.getStreet() == "Inaccurate_data" && advert.getDistrict() == "Inaccurate_data") {
             advert.setAddress(advert.getCity());
-        }else{
-            advert.setAddress(advert.getCity()+", "+advert.getDistrict()+", "+advert.getStreet());
+        } else {
+            advert.setAddress(advert.getCity() + ", " + advert.getDistrict() + ", " + advert.getStreet());
         }
-        /*
-         advert.setCity(elementsAddress1.get(2).text());
-        //System.out.println(elementsAddress1.get(2).text());
 
-        /**
-         * Warunek:
-         * 1 - jesli element 3 ma w nazwie ulice to znaczy ze nie podano dzielnicy tylko odrazu ulice
-         * 2 - jesli element 4 ma zobacz na mapie to wstawiamy tak samo jak wyżej
-         * 4 - jeżeli element 5 ma zobacz na mapie to wstawiamy oddzielnie ulice oraz dzielnice
 
-        if(elementsAddress1.get(5).text().contains("Zobacz na mapie") && !elementsAddress1.get(4).text().contains("Zobacz na mapie")){
-            advert.setDistrict(elementsAddress1.get(3).text());
-            advert.setStreet(elementsAddress1.get(4).text());
-        }else if(elementsAddress1.get(4).text().contains("Zobacz na mapie")){
-            advert.setStreet(elementsAddress1.get(3).text());
-            advert.setDistrict(elementsAddress1.get(3).text());
-        }else if(!elementsAddress1.get(3).text().contains("street")){
-            advert.setDistrict(elementsAddress1.get(3).text());
-            advert.setStreet(elementsAddress1.get(3).text());
-            //System.out.println(elementsAddress1.get(3).text());
-        }
-        if(advert.getDistrict()==advert.getStreet()){
-            advert.setAddress(advert.getCity()+", "+advert.getDistrict());
-        }else{
-            advert.setAddress(advert.getCity()+", "+advert.getDistrict()+", "+advert.getStreet());
-        }
-   */
         /**
          * cena
          */
-        Elements elementsPirce = source.getElementsByAttributeValueContaining("class","box-price-value");
+        Elements elementsPirce = source.getElementsByAttributeValueContaining("class", "box-price-value");
         Element elementPrice1 = elementsPirce.first();
-        Pattern patternPrice = Pattern.compile("(.*[0-9] *[0-9])");
-
-        Matcher matcher = patternPrice.matcher(elementPrice1.text());
-        if (matcher.find())
-        {
-            advert.setPrice(Double.parseDouble(matcher.group(0).replaceAll("\\s+","").replaceAll(",",".")));
-        }
-        if(elementPrice1.text().contains("zł")){
-            advert.setCurrency("zł");
-        }else if(elementPrice1.text().contains("EUR")){
-            advert.setCurrency("EUR");
-        }
+        advert.setPrice(getPrice(elementPrice1.text()));
+        advert.setCurrency(getCurrency(elementPrice1.text()));
 
         /**
          * okres płatności np. miesiecznie
          */
-        Elements elementsPeriodOfPayment = source.getElementsByAttributeValueContaining("class","box-price-text");
+        Elements elementsPeriodOfPayment = source.getElementsByAttributeValueContaining("class", "box-price-text");
         Element elementPeriodOfPayment = elementsPeriodOfPayment.first();
-        System.out.println(elementPeriodOfPayment.text());
-        if(elementPeriodOfPayment.text().equals("/miesiąc")){
+        //System.out.println(elementPeriodOfPayment.text());
+        if (elementPeriodOfPayment.text().equals("/miesiąc")) {
             advert.setPeriodOfPeyment("monthly");
         }
 
@@ -267,73 +312,162 @@ public class GenrateAdvert {
         /**
          * area
          */
-        Elements elementsArea = source.getElementsByAttributeValueContaining("class","param_m");
+        Elements elementsArea = source.getElementsByAttributeValueContaining("class", "param_m");
         Element elementArea = elementsArea.first();
-        System.out.println(elementArea.text());
+        //System.out.println(elementArea.text());
         Pattern patternArea = Pattern.compile("([0-9,]+)");
-        Matcher matcherArea= patternArea.matcher(elementArea.text());
-        if(matcherArea.find()){
-            System.out.println("gruper: "+matcherArea.group(0));
+        Matcher matcherArea = patternArea.matcher(elementArea.text());
+        if (matcherArea.find()) {
+            //System.out.println("gruper: " + matcherArea.group(0));
 
-            advert.setLivingArea(Double.parseDouble(matcherArea.group(0).replaceAll("\\s+","").replaceAll(",",".")));
-            advert.setUnityArea(elementArea.text().substring(elementArea.text().length()-3,elementArea.text().length()));
+            advert.setLivingArea(Double.parseDouble(matcherArea.group(0).replaceAll("\\s+", "").replaceAll(",", ".")));
+            advert.setUnityArea(elementArea.text().substring(elementArea.text().length() - 3, elementArea.text().length()));
 
         }
         /**
          * rooms
          */
-        Elements elementsRooms = source.getElementsByAttributeValueContaining("class","section-offer-params");
+        Elements elementsRooms = source.getElementsByAttributeValueContaining("class", "section-offer-params");
         Element elementRooms = elementsRooms.first();
-        System.out.println(elementRooms.text());
+        //System.out.println(elementRooms.text());
         String content = elementRooms.text();
-        if(content.contains("Liczba pokoi ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+
+        String[] detailElementsArrayy = content.replaceAll("/", "").split(" ");
+        List<String> detailElementList = Arrays.asList(detailElementsArrayy);
+        if (detailElementList.contains("pokoi")) {
+            advert.setNumberOfRooms(Integer.valueOf(detailElementList.get(detailElementList.indexOf("pokoi") + 1)));
         }
-        if(content.contains("Piętro ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
+        if (content.contains("Piętro ")) {
+            String accurateFloor = "";
+
+            if (detailElementList.get(detailElementList.indexOf("Piętro") + 1).equals(">")) {
+                accurateFloor = ">10";
+            }else if(!detailElementList.get(detailElementList.indexOf("Piętro") + 1).equals("parter") && !detailElementList.get(detailElementList.indexOf("Piętro") + 1).equals("poddasze")){
+                accurateFloor = detailElementList.get(detailElementList.indexOf("Piętro") + 1);
+            }else if(detailElementList.get(detailElementList.indexOf("Piętro") + 1).equals("parter")){
+                accurateFloor = "parter";
+            }else if(detailElementList.get(detailElementList.indexOf("Piętro") + 1).equals("poddasze")){
+                accurateFloor = "poddasze";
+            }
+            Integer allFloor;
+            if(content.contains("(z")){
+                allFloor = Integer.valueOf(detailElementList.get(detailElementList.indexOf("(z") + 1).replaceAll("\\)", ""));
+            }else{
+                allFloor=null;
+            }
+            advert.setAccurateFloor(accurateFloor);
+            advert.setAllFloor(allFloor);
         }
-        if(content.contains("Kaucja: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Rodzaj zabudowy: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Ogrzewanie: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Stan wykończenia: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Dostępne od: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Wynajmę również studentom: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Wyposażenie ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Rok budowy: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Materiał budynku: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Materiał budynku: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
-        if(content.contains("Materiał budynku: ")){
-            advert.setNumberOfRooms(Integer.valueOf(content.substring(content.indexOf("Liczba pokoi ")+13,content.indexOf("Liczba pokoi ")+14)));
-        }
+        if (content.contains("Kaucja: ")) {
+            advert.setDeposit(getPrice(detailElementList.get(detailElementList.indexOf("Kaucja:") + 1) + detailElementList.get(detailElementList.indexOf("Kaucja:") + 2)));
+            advert.setDepositeCurency(getCurrency(detailElementList.get(detailElementList.indexOf("Kaucja:") + 3)));
 
 
+        }
+        if (content.contains("zabudowy: ")) {
+            advert.setTypeOfDevelopment(detailElementList.get(detailElementList.indexOf("zabudowy:") + 1));
+        }
+        if (content.contains("Ogrzewanie: ")) {
+            advert.setHeating(detailElementList.get(detailElementList.indexOf("Ogrzewanie:") + 1));
+        }
+        if (content.contains("Rok budowy: ")) {
+            String sDate1 = detailElementList.get(detailElementList.indexOf("budowy:") + 1);
+            Date date1 = null;
+            try {
+                date1 = new SimpleDateFormat("yyyy").parse(sDate1);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            advert.setDateBuild(date1);
+        }
+        if (content.contains("Stan wykończenia: ")) {
+            advert.setConditionOfProperty(detailElementList.get(detailElementList.indexOf("wykończenia:") + 1) + " " + detailElementList.get(detailElementList.indexOf("wykończenia:") + 2));
+        }
+        if (content.contains("Okna: ")) {
+            advert.setTypeOfWindow(detailElementList.get(detailElementList.indexOf("Okna:") + 1));
+        }
+        if (content.contains("Materiał budynku: ")) {
+            advert.setTypeOfBuildingMaterial(detailElementList.get(detailElementList.indexOf("Materiał") + 2));
+        }
+        if (content.contains("Dostępne od: ")) {
+            advert.setDateOfAvailability(getDate(detailElementList.get(detailElementList.indexOf("Dostępne") + 2) + detailElementList.get(detailElementList.indexOf("Dostępne") + 3) + detailElementList.get(detailElementList.indexOf("Dostępne") + 4)));
+        }
+        if (content.contains("Wynajmę również studentom: ")) {
+            advert.setAlsoForStudent(detailElementList.get(detailElementList.indexOf("studentom:") + 1));
+        }
+        if (content.contains("Wyposażenie ")) {
+            Pattern pattern = Pattern.compile("([A-Z])");
+            int i = 1;
+            StringBuilder sb = new StringBuilder();
+            while (detailElementList.indexOf("Wyposażenie") + i != detailElementList.size()  && !pattern.matcher(detailElementList.get(detailElementList.indexOf("Wyposażenie") + i)).find()) {
+                //System.out.println(detailElementList.get(detailElementList.indexOf("Wyposażenie") + i));
+                if(detailElementList.get(detailElementList.indexOf("Wyposażenie") + i)!="/"){
+                    sb.append("," + detailElementList.get(detailElementList.indexOf("Wyposażenie") + i));
+
+                }
+
+                i++;
+            }
+            advert.setEquipment(sb.toString());
+
+        }
+        if (content.contains("Zabezpieczenia ")) {
+            Pattern pattern = Pattern.compile("([A-Z])");
+            int i = 1;
+            StringBuilder sb = new StringBuilder();
+            while (detailElementList.indexOf("Zabezpieczenia") + i != detailElementList.size()  && !pattern.matcher(detailElementList.get(detailElementList.indexOf("Zabezpieczenia") + i)).find()) {
+                //System.out.println(detailElementList.get(detailElementList.indexOf("Zabezpieczenia") + i));
+
+                if(detailElementList.get(detailElementList.indexOf("Zabezpieczenia") + i)!="/"){
+                    sb.append("," + detailElementList.get(detailElementList.indexOf("Zabezpieczenia") + i));
+
+                }
+                i++;
+            }
+            advert.setSecurity(sb.toString());
+
+        }
+        if (content.contains("Media ")) {
+            Pattern pattern = Pattern.compile("([A-Z])");
+            int i = 1;
+            StringBuilder sb = new StringBuilder();
+            while (detailElementList.indexOf("Media") + i != detailElementList.size()  && !pattern.matcher(detailElementList.get(detailElementList.indexOf("Media") + i)).find()) {
+
+                //System.out.println(detailElementList.get(detailElementList.indexOf("Media") + i));
+                if(detailElementList.get(detailElementList.indexOf("Media") + i)!="/"){
+                    sb.append("," + detailElementList.get(detailElementList.indexOf("Media") + i));
+                }
+                i++;
+            }
+            advert.setUtilities(sb.toString());
+        }
+        if (content.contains("Informacje dodatkowe ")) {
+            Pattern pattern = Pattern.compile("([A-Z])");
+            int i = 1;
+            //System.out.println("Rozmiar: " + detailElementList.size());
+            //System.out.println("Dodatkowe: " + detailElementList.indexOf("dodatkowe"));
+            StringBuilder sb = new StringBuilder();
+            while (detailElementList.indexOf("dodatkowe") + i != detailElementList.size()  && !pattern.matcher(detailElementList.get(detailElementList.indexOf("dodatkowe") + i)).find()) {
+                //System.out.println(detailElementList.get(detailElementList.indexOf("dodatkowe") + i));
+
+                if(detailElementList.get(detailElementList.indexOf("dodatkowe") + i)!="/"){
+                    sb.append("," + detailElementList.get(detailElementList.indexOf("dodatkowe") + i));
+                }
+                i++;
+            }
+            advert.setAdditionalInformation(sb.toString());
+        }
+        /**
+         * latitiude longitiude
+         */
+        Elements elementsLat = source.getElementsByAttributeValueContaining("id", "mapContainer");
+        Element elementLat = elementsLat.first();
+
+        advert.setLatitude(Double.parseDouble(elementLat.attr("data-lat")));
+        advert.setLongitude(Double.parseDouble(elementLat.attr("data-lon")));
 
 
     }
-
-
-
-
 
 
 }
